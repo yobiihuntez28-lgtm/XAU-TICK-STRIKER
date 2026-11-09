@@ -10,8 +10,18 @@ const PASSWORD = process.env.DASHBOARD_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const EA_API_KEY = process.env.EA_API_KEY;
 
-if (!PASSWORD  !SESSION_SECRET  !EA_API_KEY) {
-  console.error("Missing required environment variables.");
+if (!PASSWORD) {
+  console.error("Missing DASHBOARD_PASSWORD");
+  process.exit(1);
+}
+
+if (!SESSION_SECRET) {
+  console.error("Missing SESSION_SECRET");
+  process.exit(1);
+}
+
+if (!EA_API_KEY) {
+  console.error("Missing EA_API_KEY");
   process.exit(1);
 }
 
