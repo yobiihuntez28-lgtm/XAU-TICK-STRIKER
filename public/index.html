@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080910">
+<title>XAU TICK STRIKER</title>
+
+<style>
+:root {
+  --gold: #f5c542;
+  --blue: #00c8ff;
+  --green: #00ed9a;
+  --purple: #a855f7;
+  --bg: #080910;
+  --panel: #111522;
+  --muted: #8993a8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  background:
+    radial-gradient(ellipse at 50% 0%, #25203c 0%, transparent 48%),
+    radial-gradient(ellipse at 0% 65%, #071d30 0%, transparent 40%),
+    var(--bg);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .28;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, white, transparent),
+    radial-gradient(2px 2px at 70% 20%, #f5c542, transparent),
+    radial-gradient(2px 2px at 85% 75%, #00c8ff, transparent),
+    radial-gradient(2px 2px at 40% 80%, white, transparent);
+  background-size: 170px 170px;
+}
+
+.container {
+  position: relative;
+  width: min(100% - 28px, 620px);
+  margin: auto;
+  padding: 25px 0 35px;
+}
+
+header { text-align: center; margin-bottom: 25px; }
+
+.crown { font-size: 34px; filter: drop-shadow(0 0 12px #f5c542); }
+
+h1 {
+  margin: 8px 0;
+  font-size: clamp(27px, 7vw, 39px);
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #fff2a0, #f5c542, #fff, #d99a21);
+  -webkit-background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 25px #f5c54244;
+}
+
+.subtitle {
+  color: var(--blue);
+  font-size: 10px;
+  letter-spacing: 4px;
+  font-weight: bold;
+}
+
+.panel {
+  background: linear-gradient(145deg, #171c2b, #0d111c);
+  border: 1px solid #d7ad493e;
+  border-radius: 17px;
+  padding: 19px;
+  margin-bottom: 15px;
+  box-shadow: 0 8px 30px #0008, inset 0 0 22px #ffffff05;
+}
+
+.section-title {
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  margin-bottom: 17px;
+}
+
+label {
+  display: block;
+  color: #aab3c7;
+  font-size: 11px;
+  margin: 13px 0 7px;
+}
+
+input {
+  width: 100%;
+  padding: 13px;
+  color: white;
+  background: #080d18;
+  border: 1px solid #354057;
+  border-radius: 9px;
+  outline: none;
+  font-size: 14px;
+}
+
+input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 12px #00c8ff30;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px;
+  background: #080d18;
+  border: 1px solid #26334b;
+  border-radius: 10px;
+}
+
+.status-label { color: #aab3c7; font-size: 12px; }
+
+.status-value {
+  font-size: 11px;
+  font-weight: bold;
+  color: #ffbd4a;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffbd4a;
+  margin-right: 6px;
+}
+
+.dot.online { background: var(--green); box-shadow: 0 0 10px var(--green); }
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+.primary {
+  width: 100%;
+  margin-top: 17px;
+  color: #08111b;
+  background: linear-gradient(90deg, #f5c542, #fff0a0, #d99a21);
+  box-shadow: 0 0 18px #f5c54235;
+}
+
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.start {
+  color: #001b13;
+  background: linear-gradient(135deg, #00ed9a, #00b879);
+  box-shadow: 0 0 18px #00ed9a35;
+}
+
+.stop {
+  color: white;
+  background: linear-gradient(135deg, #ff416c, #b5163b);
+  box-shadow: 0 0 18px #ff416c35;
+}
+
+.message {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  min-height: 18px;
+  margin-top: 14px;
+  line-height: 1.5;
+}
+
+.hidden { display: none; }
+
+footer {
+  text-align: center;
+  color: #69738a;
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-top: 23px;
+}
+
+@media(max-width:380px) {
+  .grid { grid-template-columns: 1fr; }
+  .panel { padding: 15px; }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <header>
+  <div class="crown">♛</div>
+  <h1>XAU TICK STRIKER</h1>
+  <div class="subtitle">PRECISION • SPEED • POWER</div>
+</header>
+
+<section class="panel" id="loginPanel">
+  <div class="section-title">🔐 DASHBOARD ACCESS</div>
+  <label>Dashboard Password</label>
+  <input id="password" type="password" placeholder="Enter dashboard password">
+  <button class="primary" id="loginBtn" onclick="login()">UNLOCK DASHBOARD</button>
+  <div class="message" id="loginMessage"></div>
+</section>
+
+<main id="dashboard" class="hidden">
+
+  <section class="panel">
+    <div class="section-title">◈ MT5 CONNECTION</div>
+
+    <div class="grid">
+      <div>
+        <label>MT5 Account Login</label>
+        <input id="mt5Login" type="text" placeholder="Account number">
+      </div>
+      <div>
+        <label>Broker / Server</label>
+        <input id="brokerServer" type="text" placeholder="Broker server">
+      </div>
+    </div>
+
+    <div class="status" style="margin-top:17px">
+      <span class="status-label">MT5 CONNECTION</span>
+      <span class="status-value" id="connection">
+        <span class="dot"></span> DISCONNECTED
+      </span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-title">⚙ TRADING CONFIGURATION</div>
+
+    <div class="grid">
+      <div>
+        <label>LOT SIZE</label>
+        <input id="lotSize" type="number" min="0.01" step="0.01" value="0.01">
+      </div>
+      <div>
+        <label>MAXIMUM POSITIONS</label>
+        <input id="maxPositions" type="number" min="1" step="1" value="5">
+      </div>
+      <div>
+        <label>COMBINED TAKE PROFIT ($)</label>
+        <input id="combinedTP" type="number" min="0" step="0.01" value="10">
+      </div>
+      <div>
+        <label>COMBINED STOP LOSS ($)</label>
+        <input id="combinedSL" type="number" min="0" step="0.01" value="10">
+      </div>
+    </div>
+
+    <button class="primary" onclick="saveSettings()">SAVE SETTINGS</button>
+    <div class="message" id="settingsMessage"></div>
+  </section>
+
+  <section class="panel">
+    <div class="section-title">⚡ STRIKER CONTROL</div>
+
+    <div class="status">
+      <span class="status-label">BOT STATUS</span>
+      <span class="status-value" id="botStatus">STOPPED</span>
+    </div>
+
+    <div class="controls" style="margin-top:17px">
+      <button class="start" onclick="controlBot('start')">▶ START</button>
+      <button class="stop" onclick="controlBot('stop')">■ STOP</button>
+    </div>
+
+    <div class="message" id="controlMessage">
+      Connect your MT5 EA to activate trading controls.
+    </div>
+  </section>
+
+  <button class="primary" style="background:#222b3d;color:#fff;box-shadow:none"
+    onclick="logout()">LOG OUT</button>
+
+</main>
+
+<footer>POWERED BY XAU TICK STRIKER</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function api(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    ...options
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+async function login() {
+  $("loginBtn").disabled = true;
+  $("loginMessage").textContent = "Checking access...";
+
+  try {
+    await api("/api/login", {
+      method: "POST",
+      body: JSON.stringify({ password: $("password").value })
+    });
+
+    $("loginPanel").classList.add("hidden");
+    $("dashboard").classList.remove("hidden");
+    await refresh();
+  } catch (error) {
+    $("loginMessage").textContent = error.message;
+  } finally {
+    $("loginBtn").disabled = false;
+  }
+}
+
+async function saveSettings() {
+  try {
+    const result = await api("/api/settings", {
+      method: "POST",
+      body: JSON.stringify({
+        mt5Login: $("mt5Login").value,
+        brokerServer: $("brokerServer").value,
+        lotSize: $("lotSize").value,
+        maxPositions: $("maxPositions").value,
+        combinedTP: $("combinedTP").value,
+        combinedSL: $("combinedSL").value
+      })
+    });
+
+  $("settingsMessage").textContent = "Settings saved successfully.";
+  } catch (error) {
+    $("settingsMessage").textContent = error.message;
+  }
+}
+
+async function controlBot(action) {
+  $("controlMessage").textContent = "Sending command...";
+
+  try {
+    await api("/api/control", {
+      method: "POST",
+      body: JSON.stringify({ action })
+    });
+
+    await refresh();
+    $("controlMessage").textContent =
+      action === "stop"
+        ? "STOP requested. EA must confirm closing its positions."
+        : "START requested. EA must confirm connection before trading.";
+  } catch (error) {
+    $("controlMessage").textContent = error.message;
+  }
+}
+
+async function refresh() {
+  try {
+    const data = await api("/api/dashboard");
+
+    $("lotSize").value = data.settings.lotSize;
+    $("maxPositions").value = data.settings.maxPositions;
+    $("combinedTP").value = data.settings.combinedTP;
+    $("combinedSL").value = data.settings.combinedSL;
+    $("mt5Login").value = data.settings.mt5Login;
+    $("brokerServer").value = data.settings.brokerServer;
+
+    const connected = data.eaConnected;
+
+    $("connection").innerHTML = connected
+      ? '<span class="dot online"></span> CONNECTED'
+      : '<span class="dot"></span> DISCONNECTED';
+
+    $("botStatus").textContent = data.botEnabled ? "RUNNING" : "STOPPED";
+  } catch (error) {
+    $("connection").innerHTML =
+      '<span class="dot"></span> DISCONNECTED';
+  }
+}
+
+async function logout() {
+  try { await api("/api/logout", { method: "POST" }); } catch {}
+
+  $("dashboard").classList.add("hidden");
+  $("loginPanel").classList.remove("hidden");
+  $("password").value = "";
+}
+
+api("/api/dashboard")
+  .then(async () => {
+    $("loginPanel").classList.add("hidden");
+    $("dashboard").classList.remove("hidden");
+    await refresh();
+  })
+  .catch(() => {});
+
+setInterval(() => {
+  if (!$("dashboard").classList.contains("hidden")) refresh();
+}, 5000);
+</script>
+</body>
+</html>
