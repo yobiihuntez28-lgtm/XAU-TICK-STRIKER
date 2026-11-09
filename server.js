@@ -61,7 +61,7 @@ function makeSession() {
     .update(payload)
     .digest("hex");
 
-  return ${payload}.${signature};
+  return `${payload}.${signature}`;
 }
 
 function validSession(req) {
