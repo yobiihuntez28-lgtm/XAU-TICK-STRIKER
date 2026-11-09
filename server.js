@@ -97,9 +97,10 @@ function validSession(req) {
   const expires = parts[0];
   const signature = parts[1];
 
-  if (!expires  !signature  Number(expires) < Date.now()) {
-    return false;
-  }
+  if (!expires) return false;
+if (!signature) return false;
+if (Number(expires) < Date.now()) return false;
+
 
   const expected = crypto
     .createHmac("sha256", SESSION_SECRET)
