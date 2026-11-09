@@ -6,17 +6,17 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: "50kb" }));
-app.use(express.static(path.join(__dirname, "public")));
-
-const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD;
+const PASSWORD = process.env.DASHBOARD_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const EA_API_KEY = process.env.EA_API_KEY;
 
-if (!DASHBOARD_PASSWORD || !SESSION_SECRET || !EA_API_KEY) {
+if (!PASSWORD  !SESSION_SECRET  !EA_API_KEY) {
   console.error("Missing required environment variables.");
   process.exit(1);
 }
+
+app.use(express.json({ limit: "50kb" }));
+app.use(express.static(path.join(__dirname, "public")));
 
 const settingsFile = path.join(__dirname, "settings.json");
 
@@ -29,51 +29,67 @@ let settings = {
   brokerServer: ""
 };
 
-if (fs.existsSync(settingsFile)) {
-  try {
-    settings = { ...settings, ...JSON.parse(fs.readFileSync(settingsFile, "utf8")) };
-  } catch {
-    console.error("Could not read settings.json. Using defaults.");
+try {
+  if (fs.existsSync(settingsFile)) {
+    settings = Object.assign(
+      settings,
+      JSON.parse(fs.readFileSync(settingsFile, "utf8"))
+    );
   }
+} catch (error) {
+  console.error("Settings file could not be loaded.");
 }
 
 let botEnabled = false;
 let closeAllRequested = false;
 let lastEAContact = 0;
-let eaAccount = { login: "", server: "" };
 
-function saveSettings() {
-  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
-}
+let eaAccount = {
+  login: "",
+  server: ""
+};
 
 function safeEqual(a, b) {
   const first = Buffer.from(String(a));
   const second = Buffer.from(String(b));
+
   return first.length === second.length &&
     crypto.timingSafeEqual(first, second);
 }
 
 function makeSession() {
-  const expires = Date.now() + 12 * 60 * 60 * 1000;
-  const payload = String(expires);
+  const expires = String(Date.now() + 43200000);
+
   const signature = crypto
     .createHmac("sha256", SESSION_SECRET)
-    .update(payload)
+    .update(expires)
     .digest("hex");
 
-  return `${payload}.${signature}`;
+  return expires + "." + signature;
 }
 
 function validSession(req) {
-  const token = req.headers.cookie
-    ?.split("; ")
-    .find(item => item.startsWith("xau_session="))
-    ?.split("=")[1];
+  const cookies = req.headers.cookie || "";
+
+  const token = cookies
+    .split(";")
+    .map(function (item) {
+      return item.trim();
+    })
+    .find(function (item) {
+      return item.indexOf("xau_session=") === 0;
+    });
 
   if (!token) return false;
 
-  const [expires, signature] = token.split(".");
-  if (!expires || !signature || Number(expires) < Date.now()) return false;
+  const parts = token.substring("xau_session=".length).split(".");
+
+  const expires = parts[0];
+  const signature = parts[1];
+
+  if (!expires  !signature  Number(expires) < Date.now()) {
+    return false;
+  }
 
   const expected = crypto
     .createHmac("sha256", SESSION_SECRET)
@@ -87,6 +103,7 @@ function requireDashboard(req, res, next) {
   if (!validSession(req)) {
     return res.status(401).json({ error: "Please log in." });
   }
+
   next();
 }
 
@@ -94,41 +111,49 @@ function requireEA(req, res, next) {
   if (!safeEqual(req.headers["x-ea-key"] || "", EA_API_KEY)) {
     return res.status(401).json({ error: "EA authentication failed." });
   }
+
   next();
 }
 
-app.post("/api/login", (req, res) => {
-  if (!safeEqual(req.body.password || "", DASHBOARD_PASSWORD)) {
+function saveSettings() {
+  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+}
+
+app.post("/api/login", function (req, res) {
+  if (!safeEqual(req.body.password || "", PASSWORD)) {
     return res.status(401).json({ error: "Incorrect password." });
   }
 
   const session = makeSession();
+
   res.setHeader(
     "Set-Cookie",
-    xau_session=${session}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=43200
+    "xau_session=" + session +
+    "; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=43200"
   );
 
   res.json({ success: true });
 });
 
-app.post("/api/logout", requireDashboard, (req, res) => {
+app.post("/api/logout", requireDashboard, function (req, res) {
   res.setHeader(
     "Set-Cookie",
     "xau_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0"
   );
+
   res.json({ success: true });
 });
 
-app.get("/api/dashboard", requireDashboard, (req, res) => {
+app.get("/api/dashboard", requireDashboard, function (req, res) {
   res.json({
-    settings,
-    botEnabled,
+    settings: settings,
+    botEnabled: botEnabled,
     eaConnected: Date.now() - lastEAContact < 20000,
-    eaAccount
+    eaAccount: eaAccount
   });
 });
 
-app.post("/api/settings", requireDashboard, (req, res) => {
+app.post("/api/settings", requireDashboard, function (req, res) {
   const body = req.body;
 
   const lotSize = Number(body.lotSize);
@@ -145,25 +170,24 @@ app.post("/api/settings", requireDashboard, (req, res) => {
     return res.status(400).json({ error: "Invalid settings." });
   }
 
-  settings = {
-    ...settings,
-    lotSize,
-    maxPositions,
-    combinedTP,
-    combinedSL,
+  settings = Object.assign({}, settings, {
+    lotSize: lotSize,
+    maxPositions: maxPositions,
+    combinedTP: combinedTP,
+    combinedSL: combinedSL,
     mt5Login: String(body.mt5Login || "").slice(0, 40),
     brokerServer: String(body.brokerServer || "").slice(0, 100)
-  };
+  });
 
   try {
     saveSettings();
-    res.json({ success: true, settings });
-  } catch {
+    res.json({ success: true, settings: settings });
+  } catch (error) {
     res.status(500).json({ error: "Could not save settings." });
   }
 });
 
-app.post("/api/control", requireDashboard, (req, res) => {
+app.post("/api/control", requireDashboard, function (req, res) {
   const action = req.body.action;
 
   if (action === "start") {
@@ -175,10 +199,14 @@ app.post("/api/control", requireDashboard, (req, res) => {
     return res.status(400).json({ error: "Invalid control action." });
   }
 
-  res.json({ success: true, botEnabled, closeAllRequested });
+  res.json({
+    success: true,
+    botEnabled: botEnabled,
+    closeAllRequested: closeAllRequested
+  });
 });
 
-app.post("/api/ea/poll", requireEA, (req, res) => {
+app.post("/api/ea/poll", requireEA, function (req, res) {
   lastEAContact = Date.now();
 
   if (req.body.login !== undefined) {
@@ -194,25 +222,23 @@ app.post("/api/ea/poll", requireEA, (req, res) => {
   }
 
   res.json({
-    settings,
-    botEnabled,
-    closeAllRequested
+    settings: settings,
+    botEnabled: botEnabled,
+    closeAllRequested: closeAllRequested
   });
 });
 
-app.get("/api/health", (req, res) => {
+app.get("/api/health", function (req, res) {
   res.json({
     name: "XAU TICK STRIKER",
     status: "online"
   });
 });
 
-app.get("/", (req, res) => {
+app.get("/", function (req, res) {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(XAU TICK STRIKER server running on port ${PORT});
+app.listen(PORT, "0.0.0.0", function () {
+  console.log("XAU TICK STRIKER server running on port " + PORT);
 });
-
-         
