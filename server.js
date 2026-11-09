@@ -173,9 +173,9 @@ app.post("/api/settings", requireDashboard, function (req, res) {
   const combinedSL = Number(body.combinedSL);
 
   if (
-    !Number.isFinite(lotSize)  lotSize <= 0 
-    !Number.isInteger(maxPositions)  maxPositions < 1 
-    !Number.isFinite(combinedTP)  combinedTP < 0 
+    !Number.isFinite(lotSize) || lotSize <= 0 ||
+    !Number.isInteger(maxPositions) || maxPositions < 1 ||
+    !Number.isFinite(combinedTP) || combinedTP < 0 ||
     !Number.isFinite(combinedSL) || combinedSL < 0
   ) {
     return res.status(400).json({ error: "Invalid settings." });
